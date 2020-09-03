@@ -23,6 +23,12 @@ default clocking tb_clk @(negedge itf.clk); endclocking
 /* Uncomment to "monitor" changes to adder operational state over time */
 //initial $monitor("dut-op: time: %0t op: %s", $time, dut.ms.op.name);
 
+/* product_o is 2 * width_p bits, where width_p = 8 */
+logic [15:0] expected_product;
+assign expected_product = itf.multiplicand * itf.multiplier;
+
+int i;
+
 
 // Resets the multiplier
 task reset();
@@ -39,10 +45,18 @@ function void report_error(error_e error);
 endfunction : report_error
 
 
+/* coverage 1: assert start_i with every possible product without resets */
+function 
+
+
 initial itf.reset_n = 1'b0;
 initial begin
     reset();
     /********************** Your Code Here *****************************/
+
+    /* drive all possible inputs from [0, 65536] */
+    for (i = 0; i < 17'h10000; i++) begin
+        
     
 
     /*******************************************************************/
