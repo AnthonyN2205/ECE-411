@@ -21,13 +21,7 @@ default clocking tb_clk @(negedge itf.clk); endclocking
 // DO NOT MODIFY CODE ABOVE THIS LINE
 
 /* Uncomment to "monitor" changes to adder operational state over time */
-//initial $monitor("dut-op: time: %0t op: %s", $time, dut.ms.op.name);
-
-/* product_o is 2 * width_p bits, where width_p = 8 */
-logic [15:0] expected_product;
-assign expected_product = itf.multiplicand * itf.multiplier;
-
-int i;
+initial $monitor("dut-op: time: %0t op: %s", $time, dut.ms.op.name);
 
 
 // Resets the multiplier
@@ -45,19 +39,73 @@ function void report_error(error_e error);
 endfunction : report_error
 
 
-/* coverage 1: assert start_i with every possible product without resets */
-function 
+/* product result is 2*width_p bits == 16 bits */
+logic [15:0] expected_results;
+/* top 8 bits used for op1 --- bottom 8 bits used for op2 */
+logic [15:0] operands = 16'b0;
+assign itf.multiplicand = operands[15:8];
+assign itf.multiplier = operands[7:0];
+/* expected results of op1 * op2 */
+assign expected_results = itf.multiplicand * itf.multiplier;
 
+int i;
+
+
+/* check output of multipler 
+ *
+ * if ready signal = 0 after reset, report NOT_READY
+ * if ready signal = 0 after finished (itf.done == 1), report NOT_READY
+ *
+ */
+task test_product();
+    @(tb_clk);
+
+    /* set start to 1 to begin new multiplcation */
+    itf.start <= 1'b1;
+    /* wait until multipler is done */
+    @(posedge itf.done);
+    /* report error if multipler result is not the same as expected */
+    assert(itf.product == expected_results)
+    else begin
+        $error ("%0d: %0t: BAD_PRODUCT error detected", `__LINE__, $time);
+        report_error(BAD_PRODUCT);
+    end
+
+    /* check if ready bit is set after being done */
+    assert(itf.rdy == 1'b1)
+    else begin
+        $error ("%0d: %0t: NOT_READY error detected", `__LINE__, $time);
+        report_error(NOT_READY);
+    end
+
+    /* perform reset to check ready bit */
+    @(tb_clk);
+    itf.reset_n <= 1'b0;      // active low reset
+    ##5;
+    itf.reset_n <= 1'b1;
+    ##1
+
+    /* check the ready bit after a reset */
+    assert(itf.rdy == 1'b1)
+    else begin
+        $error ("%0d: %0t: NOT_READY error detected", `__LINE__, $time);
+        report_error(NOT_READY);
+    end
+
+    @(tb_clk);
+    /* increment operand */
+    operands <= operands + 16'b1;
+
+endtask
 
 initial itf.reset_n = 1'b0;
 initial begin
     reset();
     /********************** Your Code Here *****************************/
-
-    /* drive all possible inputs from [0, 65536] */
-    for (i = 0; i < 17'h10000; i++) begin
-        
-    
+    /* coverage 1: assert all possible combinations without resets */
+    for (i = 0; i < 17'h1000; i++) begin
+        test_product();
+    end
 
     /*******************************************************************/
     itf.finish(); // Use this finish task in order to let grading harness
