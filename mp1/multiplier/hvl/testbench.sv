@@ -42,7 +42,7 @@ endfunction : report_error
 /* product result is 2*width_p bits == 16 bits */
 logic [15:0] expected_results;
 /* top 8 bits used for op1 --- bottom 8 bits used for op2 */
-logic [15:0] operands = 16'b0;
+logic [15:0] operands;
 assign itf.multiplicand = operands[15:8];
 assign itf.multiplier = operands[7:0];
 /* expected results of op1 * op2 */
@@ -71,20 +71,6 @@ task test_product();
         report_error(BAD_PRODUCT);
     end
 
-    /* check if ready bit is set after being done */
-    assert(itf.rdy == 1'b1)
-    else begin
-        $error ("%0d: %0t: NOT_READY error detected", `__LINE__, $time);
-        report_error(NOT_READY);
-    end
-
-    /* perform reset to check ready bit */
-    @(tb_clk);
-    itf.reset_n <= 1'b0;      // active low reset
-    ##5;
-    itf.reset_n <= 1'b1;
-    ##1
-
     /* check the ready bit after a reset */
     assert(itf.rdy == 1'b1)
     else begin
@@ -92,18 +78,20 @@ task test_product();
         report_error(NOT_READY);
     end
 
-    @(tb_clk);
-    /* increment operand */
-    operands <= operands + 16'b1;
+    itf.start <= 1'b0;
 
-endtask
+endtask : test_product
+
+
+
 
 initial itf.reset_n = 1'b0;
 initial begin
     reset();
     /********************** Your Code Here *****************************/
     /* coverage 1: assert all possible combinations without resets */
-    for (i = 0; i < 17'h1000; i++) begin
+    for (i = 0; i < 65536; i++) begin
+        operands = i;
         test_product();
     end
 
