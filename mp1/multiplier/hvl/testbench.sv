@@ -71,6 +71,39 @@ task test_product();
         report_error(BAD_PRODUCT);
     end
 
+    /* check if ready bit is set upon completion */
+    assert(itf.rdy == 1'b1)
+    else begin
+        $error ("%0d: %0t: NOT_READY error detected", `__LINE__, $time);
+        report_error(NOT_READY);
+    end
+
+
+    itf.start <= 1'b0;
+
+endtask : test_product
+
+
+/* check reset during shift */
+task test_reset_shift();
+    @(tb_clk);
+    /* dummy value to shift */
+    operands <= 16'h0110;
+    /* start multiplication */
+    itf.start <= 1'b1;
+    @(tb_clk);
+
+    itf.start <= 1'b0;
+
+    /* if we're in the middle of doing an operation, check if it's SHIFTING */
+    while (itf.rdy == 1'b0) begin
+        @(tb_clk);
+        /* reset if SHIFTING */
+        if (dut.ms.op == SHIFT) begin
+            reset();
+        end
+    end
+
     /* check the ready bit after a reset */
     assert(itf.rdy == 1'b1)
     else begin
@@ -78,22 +111,52 @@ task test_product();
         report_error(NOT_READY);
     end
 
+endtask : test_reset_shift
+
+
+/* check reset during ADD */
+task test_reset_add();
+    @(tb_clk);
+    /* dummy value to ADD */
+    operands <= 16'h0110;
+    /* start multiplication */
+    itf.start <= 1'b1;
+    @(tb_clk);
+
     itf.start <= 1'b0;
 
-endtask : test_product
+    /* if we're in the middle of doing an operation, check if it's ADD */
+    while (itf.rdy == 1'b0) begin
+        @(tb_clk);
+        /* reset if ADD */
+        if (dut.ms.op == ADD) begin
+            reset();
+        end
+    end
 
+    /* check the ready bit after a reset */
+    assert(itf.rdy == 1'b1)
+    else begin
+        $error ("%0d: %0t: NOT_READY error detected", `__LINE__, $time);
+        report_error(NOT_READY);
+    end
 
+endtask : test_reset_add
 
 
 initial itf.reset_n = 1'b0;
 initial begin
     reset();
     /********************** Your Code Here *****************************/
-    /* coverage 1: assert all possible combinations without resets */
+    /* assert all possible combinations while asserting start (no resets) */
     for (i = 0; i < 65536; i++) begin
         operands = i;
         test_product();
     end
+
+    /* checks if ready bit is not set if reset during an operation */
+    test_reset_add();
+    test_reset_shift();
 
     /*******************************************************************/
     itf.finish(); // Use this finish task in order to let grading harness
