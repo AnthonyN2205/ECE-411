@@ -59,7 +59,7 @@ begin : state_actions
 
         s_read0: begin
             read_o = 1'b1;
-            
+        
             buffer = {line_o[255:64],burst_i};
         end
 

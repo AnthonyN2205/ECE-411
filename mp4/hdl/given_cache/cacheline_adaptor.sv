@@ -104,16 +104,15 @@ begin : state_actions
         end
 
         s_write3: begin
-            resp_o = 1'b1;
             write_o = 1'b1;
+
             burst_o = line_i[255:192];
         end
-/*
+
         s_write4: begin
             resp_o = 1'b1;
-            write_o = 1'b0;
         end
-     */
+     
         default: begin
             read_o = 1'b0;
             write_o = 1'b0;
@@ -183,20 +182,16 @@ begin : next_state_logic
         end
 
         s_write3: begin
-            if (resp_i == 1'b0)
-                next_state = s_idle;
-            else
-                next_state = s_write3;
+            next_state = s_write4;
         end
 
-        /* write end 
         s_write4: begin
             if (resp_i == 1'b0)
                 next_state = s_idle;
             else
                 next_state = s_write4;
         end
-        */
+        
 
         default: next_state = s_idle;
     endcase
@@ -204,7 +199,7 @@ end
 
 always_ff @(posedge clk)
 begin : next_state_assignment
-    if (~reset_n)
+    if (reset_n)
         state <= s_idle;
 
     state <= next_state;
